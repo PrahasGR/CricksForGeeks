@@ -1,4 +1,4 @@
-import sequelize from "../config/database";
+import sequelize from "../config/database.js";
 import { DataTypes, INTEGER } from "sequelize";
 const matchStats=sequelize.define('matchStats',{
     id: {

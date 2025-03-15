@@ -1,4 +1,4 @@
-import sequelize from "../config/database";
+import sequelize from "../config/database.js";
 import { DataTypes } from "sequelize";
 const matches = sequelize.define('Matches',{
     id: {
@@ -24,14 +24,8 @@ const matches = sequelize.define('Matches',{
         type:DataTypes.INTEGER,
         defaultValue:0
     },
-    team1:{
-        type:DataTypes.STRING,
-        defaultValue:0
-    },
-    team2:{
-        type:DataTypes.STRING,
-        defaultValue:0
-    },
+    team1: { type: DataTypes.UUID, references: { model: 'team', key: 'id' } },
+  team2: { type: DataTypes.UUID, references: { model: 'team', key: 'id' } },
     firstBatting: {
         type: DataTypes.STRING,
     },

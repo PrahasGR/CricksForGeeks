@@ -3,6 +3,9 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import sequelize from './config/database.js';
 import authRoutes from './routes/auth.routes.js';
+import router from './routes/match.routes.js';
+import playerRouter from './routes/players.routes.js';
+import teamRouter from './routes/team.routes.js';
 
 dotenv.config();
 
@@ -12,6 +15,9 @@ app.use(express.json());
 app.use(cookieParser());  
 
 app.use('/api', authRoutes);
+app.use('/api', router);
+app.use('/api', playerRouter);
+app.use('/api', teamRouter)
 
 // Sync Database & Start Server
 const PORT = process.env.PORT || 5000;
