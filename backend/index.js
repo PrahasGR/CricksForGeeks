@@ -1,4 +1,5 @@
 import express from 'express';
+import session from 'express-session';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import sequelize from './config/database.js';
@@ -13,6 +14,15 @@ const app = express();
 
 app.use(express.json());  
 app.use(cookieParser());  
+
+app.use(
+    session({
+        secret: process.env.SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+        cookie: { maxAge: 60000 },
+    })
+)
 
 app.use('/api', authRoutes);
 app.use('/api', router);
