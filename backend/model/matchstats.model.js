@@ -1,10 +1,10 @@
 import sequelize from "../config/database.js";
 import { DataTypes, INTEGER } from "sequelize";
 const matchStats=sequelize.define('matchStats',{
-    id: {
+    matchId: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
-        primaryKey: true
+    
     },
     playerId: {
         type: DataTypes.UUID,
@@ -18,7 +18,7 @@ const matchStats=sequelize.define('matchStats',{
         defaultValue: 0
     },
     ballsFaced: {
-        typr: DataTypes.INTEGER,
+        type: DataTypes.INTEGER,
         defaultValue: 0
     },
     battingStrikeRate: {
@@ -26,11 +26,11 @@ const matchStats=sequelize.define('matchStats',{
         defaultValue: 0
     },
     sixes: {
-        typr: DataTypes.INTEGER,
+        type: DataTypes.INTEGER,
         defaultValue: 0
     },
     fours: {
-        typr: DataTypes.INTEGER,
+        type: DataTypes.INTEGER,
         defaultValue: 0
     },
     inAt: {
