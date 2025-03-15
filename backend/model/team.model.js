@@ -4,8 +4,7 @@ import { DataTypes } from "sequelize";
 const teamSchema = sequelize.define("Team", {
     id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     playerID: {
-        type: DataTypes.ARRAY(DataTypes.UUID), 
-        references: { model: 'players', key: 'id' }
+        type: DataTypes.ARRAY(DataTypes.UUID)
     },
     teamName: {
         type: DataTypes.STRING
