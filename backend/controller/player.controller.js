@@ -14,7 +14,7 @@ const addPlayers = async (req, res) => {
 
 const getPlayer = async (req, res)=>{
     try {
-        const {id} = req.body
+        const {id} = req.params
         const attr = await playerSchema.findOne({where: {id}})
         if(!attr)
             return res.status(400).json({error: "Not found"})

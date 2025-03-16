@@ -10,6 +10,6 @@ const playerRouter = express.Router()
 
 playerRouter.post('/addPlayer',authenticate, addPlayers);
 playerRouter.get('/getall/players',authenticate, getAllPlayers);
-playerRouter.get('/get/player',authenticate, getPlayer);
+playerRouter.get('/get/player/:id',authenticate, getPlayer);
 
 export default playerRouter

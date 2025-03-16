@@ -7,10 +7,18 @@ import authRoutes from './routes/auth.routes.js';
 import router from './routes/match.routes.js';
 import playerRouter from './routes/players.routes.js';
 import teamRouter from './routes/team.routes.js';
+import cors from 'cors';
 
 dotenv.config();
 
 const app = express();
+
+app.use(cors(
+    {
+        origin: "http://localhost:3000",
+        credentials: true,
+    }
+));
 
 app.use(express.json());  
 app.use(cookieParser());  
