@@ -63,7 +63,20 @@ const getAllMatches = async (req, res)=>{
     }
 }
 
+const getMatch = async (req, res)=>{
+    try {
+        const {id} = req.body
+        const attr = await matches.findOne({where: {id}})
+        if(!attr)
+            return res.status(200).json({message: "No match found"})
+        res.status(200).json(attr)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
+}
+
 export {
     createMatch,
-    getAllMatches
+    getAllMatches,
+    getMatch
 }

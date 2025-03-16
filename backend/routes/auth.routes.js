@@ -7,6 +7,6 @@ authroutes.post('/register', register);
 
 authroutes.post('/login', login);
 
-authroutes.post('/logout', logout);
+authroutes.post('/logout', logout); 
 
 export default authroutes;

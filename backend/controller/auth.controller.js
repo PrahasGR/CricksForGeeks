@@ -61,11 +61,11 @@ const login = async (req, res) => {
     const token = jwt.sign({ id: user.id }, process.env.JWT_KEY, {
       expiresIn: process.env.JWT_EXPIRES_IN,
     });
-
-    res.session.userId = user.id;
-    res.session.username = user.username;
-    res.session.isLoggedIn = true;
-
+    console.log(email)
+    // res.session.Id = user.id;
+    // res.session.email = user.email;
+    // res.session.isLoggedIn = true;
+    console.log(email)
     res.cookie("token", token, {
       httpOnly: true,
       maxAge: process.env.JWT_EXPIRES_IN,
