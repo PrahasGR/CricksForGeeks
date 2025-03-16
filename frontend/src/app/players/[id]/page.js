@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -32,7 +32,7 @@ export default function PlayerDetailPage({ params }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const router = useRouter();
-  const { id } = params;
+  const { id } = use(params);
 
   const isLoggedIn = typeof window !== "undefined"
     ? localStorage.getItem("isLoggedIn") === "true"
@@ -56,13 +56,13 @@ export default function PlayerDetailPage({ params }) {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch("http://localhost:5000/api/get/player", {
-        method: "POST",
+      const response = await fetch(`http://localhost:5000/api/get/player/${id}`, {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ id }),
+        // body: JSON.stringify({ id }),
         credentials: "include",
       });
 
@@ -71,6 +71,7 @@ export default function PlayerDetailPage({ params }) {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
         console.error("Non-JSON response:", text.substring(0, 300));
+        console.log(text)
         throw new Error("Server returned an invalid response format");
       }
 
@@ -158,8 +159,8 @@ export default function PlayerDetailPage({ params }) {
         <div className="md:col-span-4 lg:col-span-3">
           <Card>
             <CardContent className="pt-6 flex flex-col items-center">
-              <div className="relative w-32 h-32 mb-4">
-                {player?.playerImage ? (
+              {/* <div className="relative w-32 h-32 mb-4"> */}
+                {/* {player?.playerImage ? (
                   <Image
                     src={player.playerImage}
                     alt={player.playerName}
@@ -174,8 +175,8 @@ export default function PlayerDetailPage({ params }) {
                   <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
                     <UserRound className="h-16 w-16 text-gray-400" />
                   </div>
-                )}
-              </div>
+                )} */}
+              {/* </div> */}
               <h2 className="text-2xl font-bold text-center">{player?.playerName}</h2>
               <div className="mt-2 flex justify-center">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSpecializationColor(player?.specialization)}`}>
