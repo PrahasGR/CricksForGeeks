@@ -245,6 +245,9 @@ export default function MatchDetailPage() {
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Matches
       </Button>
+      <Button variant="default" className="mb-6" onClick={() => router.push(`/balls/${matchId}`)}>
+        Add Balls
+      </Button>
       
       {error && (
         <Alert variant="destructive" className="mb-6">
@@ -257,6 +260,7 @@ export default function MatchDetailPage() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="ml-2">Loading match details...</span>
         </div>
+        
       ) : match ? (
         <>
           <Card className="mb-8 overflow-hidden">
@@ -351,127 +355,277 @@ export default function MatchDetailPage() {
             </TabsList>
             
             <TabsContent value="scorecard">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Match Scorecard</CardTitle>
-                  <CardDescription>
-                    Detailed batting and bowling statistics for this match
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {console.log(matchStats)}
-                  {matchStats  ? (
-                    <div className="space-y-8">
-                      {/* Team 1 Innings */}
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4">{team1Details?.teamName || "Team 1"} Innings</h3>
-                        <Table>
-                          <TableCaption>Batting</TableCaption>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Batter</TableHead>
-                              <TableHead>Runs</TableHead>
-                              <TableHead>Balls</TableHead>
-                              <TableHead>4s</TableHead>
-                              <TableHead>6s</TableHead>
-                              <TableHead>SR</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {/* Placeholder for batting stats */}
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                                Batting scorecard will be displayed here
-                              </TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-                        
-                        <div className="mt-6">
-                          <Table>
-                            <TableCaption>Bowling</TableCaption>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Bowler</TableHead>
-                                <TableHead>Overs</TableHead>
-                                <TableHead>Maidens</TableHead>
-                                <TableHead>Runs</TableHead>
-                                <TableHead>Wickets</TableHead>
-                                <TableHead>Economy</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {/* Placeholder for bowling stats */}
-                              <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                                  Bowling scorecard will be displayed here
-                                </TableCell>
-                              </TableRow>
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
+  <Card>
+    <CardHeader>
+      <CardTitle>Match Scorecard</CardTitle>
+      <CardDescription>
+        Detailed batting and bowling statistics for this match
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      {matchStats && matchStats.length > 0 ? (
+        <div className="space-y-8">
+          {/* Team 1 Innings */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">{team1Details?.teamName || "Team 1"} Innings</h3>
+            <Table>
+              <TableCaption>Batting</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Batter</TableHead>
+                  <TableHead className="text-right">Runs</TableHead>
+                  <TableHead className="text-right">Balls</TableHead>
+                  <TableHead className="text-right">4s</TableHead>
+                  <TableHead className="text-right">6s</TableHead>
+                  <TableHead className="text-right">SR</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {matchStats
+                  .filter(stat => stat.teamId === match.team1)
+                  .sort((a, b) => (a.inAt || 999) - (b.inAt || 999))
+                  .map((playerStat, index) => {
+                    console.log(team1Players)
+                    const player = team1Players.find(p => p.id === playerStat.playerId) || {};
+                    return (
+                      <TableRow key={playerStat.playerId || index}>
+                        <TableCell>
+                          {player.playerName || "Unknown Player"}
+                          {playerStat.notOut && <span className="ml-1">*</span>}
+                          {playerStat.outType && <span className="text-xs text-gray-500 block">{playerStat.outType}</span>}
+                        </TableCell>
+                        <TableCell className="text-right">{playerStat.runs}</TableCell>
+                        <TableCell className="text-right">{playerStat.ballsFaced}</TableCell>
+                        <TableCell className="text-right">{playerStat.fours}</TableCell>
+                        <TableCell className="text-right">{playerStat.sixes}</TableCell>
+                        <TableCell className="text-right">
+                          {playerStat.ballsFaced > 0
+                            ? ((playerStat.runs / playerStat.ballsFaced) * 100).toFixed(2)
+                            : "0.00"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                {matchStats.filter(stat => stat.teamId === match.team1).length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      No batting data available for this team
+                    </TableCell>
+                  </TableRow>
+                )}
+                
+                {/* Extra row for team totals */}
+                {matchStats.filter(stat => stat.teamId === match.team1).length > 0 && (
+                  <TableRow className="font-medium bg-slate-50">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-right">
+                      {matchStats
+                        .filter(stat => stat.teamId === match.team1)
+                        .reduce((sum, stat) => sum + (stat.runs || 0), 0)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {matchStats
+                        .filter(stat => stat.teamId === match.team1)
+                        .reduce((sum, stat) => sum + (stat.ballsFaced || 0), 0)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {matchStats
+                        .filter(stat => stat.teamId === match.team1)
+                        .reduce((sum, stat) => sum + (stat.fours || 0), 0)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {matchStats
+                        .filter(stat => stat.teamId === match.team1)
+                        .reduce((sum, stat) => sum + (stat.sixes || 0), 0)}
+                    </TableCell>
+                    <TableCell className="text-right"></TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            
+            <div className="mt-6">
+              <Table>
+                <TableCaption>Bowling</TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bowler</TableHead>
+                    <TableHead className="text-right">Overs</TableHead>
+                    <TableHead className="text-right">Maidens</TableHead>
+                    <TableHead className="text-right">Runs</TableHead>
+                    <TableHead className="text-right">Wickets</TableHead>
+                    <TableHead className="text-right">Economy</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {matchStats
+                    .filter(stat => stat.teamId === match.team2 && stat.ballsBowled > 0)
+                    .map((playerStat, index) => {
+                      const player = team2Players.find(p => p.id === playerStat.playerId) || {};
+                      const overs = Math.floor(playerStat.ballsBowled / 6);
+                      const balls = playerStat.ballsBowled % 6;
+                      const economy = playerStat.ballsBowled > 0
+                        ? ((playerStat.runsGiven / playerStat.ballsBowled) * 6).toFixed(2)
+                        : "0.00";
                       
-                      <Separator />
-                      
-                      {/* Team 2 Innings */}
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4">{team2Details?.teamName || "Team 2"} Innings</h3>
-                        <Table>
-                          <TableCaption>Batting</TableCaption>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Batter</TableHead>
-                              <TableHead>Runs</TableHead>
-                              <TableHead>Balls</TableHead>
-                              <TableHead>4s</TableHead>
-                              <TableHead>6s</TableHead>
-                              <TableHead>SR</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {/* Placeholder for batting stats */}
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                                Batting scorecard will be displayed here
-                              </TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-                        
-                        <div className="mt-6">
-                          <Table>
-                            <TableCaption>Bowling</TableCaption>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Bowler</TableHead>
-                                <TableHead>Overs</TableHead>
-                                <TableHead>Maidens</TableHead>
-                                <TableHead>Runs</TableHead>
-                                <TableHead>Wickets</TableHead>
-                                <TableHead>Economy</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {/* Placeholder for bowling stats */}
-                              <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                                  Bowling scorecard will be displayed here
-                                </TableCell>
-                              </TableRow>
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-gray-500">
-                      Scorecard is not available for this match yet.
-                    </div>
+                      return (
+                        <TableRow key={playerStat.playerId || index}>
+                          <TableCell>{player.playerName || "Unknown Player"}</TableCell>
+                          <TableCell className="text-right">{`${overs}.${balls}`}</TableCell>
+                          <TableCell className="text-right">{playerStat.maidenOvers || 0}</TableCell>
+                          <TableCell className="text-right">{playerStat.runsGiven || 0}</TableCell>
+                          <TableCell className="text-right">{playerStat.wicketsTaken || 0}</TableCell>
+                          <TableCell className="text-right">{economy}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  {matchStats.filter(stat => stat.teamId === match.team2 && stat.ballsBowled > 0).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        No bowling data available for this team
+                      </TableCell>
+                    </TableRow>
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          
+          <Separator />
+          
+          {/* Team 2 Innings */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">{team2Details?.teamName || "Team 2"} Innings</h3>
+            <Table>
+              <TableCaption>Batting</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Batter</TableHead>
+                  <TableHead className="text-right">Runs</TableHead>
+                  <TableHead className="text-right">Balls</TableHead>
+                  <TableHead className="text-right">4s</TableHead>
+                  <TableHead className="text-right">6s</TableHead>
+                  <TableHead className="text-right">SR</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {matchStats
+                  .filter(stat => stat.teamId === match.team2)
+                  .sort((a, b) => (a.inAt || 999) - (b.inAt || 999))
+                  .map((playerStat, index) => {
+                    const player = team2Players.find(p => p.id === playerStat.playerId) || {};
+                    return (
+                      <TableRow key={playerStat.playerId || index}>
+                        <TableCell>
+                          {player.playerName || "Unknown Player"}
+                          {playerStat.notOut && <span className="ml-1">*</span>}
+                          {playerStat.outType && <span className="text-xs text-gray-500 block">{playerStat.outType}</span>}
+                        </TableCell>
+                        <TableCell className="text-right">{playerStat.runs}</TableCell>
+                        <TableCell className="text-right">{playerStat.ballsFaced}</TableCell>
+                        <TableCell className="text-right">{playerStat.fours}</TableCell>
+                        <TableCell className="text-right">{playerStat.sixes}</TableCell>
+                        <TableCell className="text-right">
+                          {playerStat.ballsFaced > 0
+                            ? ((playerStat.runs / playerStat.ballsFaced) * 100).toFixed(2)
+                            : "0.00"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                {matchStats.filter(stat => stat.teamId === match.team2).length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      No batting data available for this team
+                    </TableCell>
+                  </TableRow>
+                )}
+                
+                {/* Extra row for team totals */}
+                {matchStats.filter(stat => stat.teamId === match.team2).length > 0 && (
+                  <TableRow className="font-medium bg-slate-50">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-right">
+                      {matchStats
+                        .filter(stat => stat.teamId === match.team2)
+                        .reduce((sum, stat) => sum + (stat.runs || 0), 0)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {matchStats
+                        .filter(stat => stat.teamId === match.team2)
+                        .reduce((sum, stat) => sum + (stat.ballsFaced || 0), 0)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {matchStats
+                        .filter(stat => stat.teamId === match.team2)
+                        .reduce((sum, stat) => sum + (stat.fours || 0), 0)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {matchStats
+                        .filter(stat => stat.teamId === match.team2)
+                        .reduce((sum, stat) => sum + (stat.sixes || 0), 0)}
+                    </TableCell>
+                    <TableCell className="text-right"></TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            
+            <div className="mt-6">
+              <Table>
+                <TableCaption>Bowling</TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bowler</TableHead>
+                    <TableHead className="text-right">Overs</TableHead>
+                    <TableHead className="text-right">Maidens</TableHead>
+                    <TableHead className="text-right">Runs</TableHead>
+                    <TableHead className="text-right">Wickets</TableHead>
+                    <TableHead className="text-right">Economy</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {matchStats
+                    .filter(stat => stat.teamId === match.team1 && stat.ballsBowled > 0)
+                    .map((playerStat, index) => {
+                      const player = team1Players.find(p => p._id === playerStat.playerId) || {};
+                      const overs = Math.floor(playerStat.ballsBowled / 6);
+                      const balls = playerStat.ballsBowled % 6;
+                      const economy = playerStat.ballsBowled > 0
+                        ? ((playerStat.runsGiven / playerStat.ballsBowled) * 6).toFixed(2)
+                        : "0.00";
+                      
+                      return (
+                        <TableRow key={playerStat.playerId || index}>
+                          <TableCell>{player.playerName || "Unknown Player"}</TableCell>
+                          <TableCell className="text-right">{`${overs}.${balls}`}</TableCell>
+                          <TableCell className="text-right">{playerStat.maidenOvers || 0}</TableCell>
+                          <TableCell className="text-right">{playerStat.runsGiven || 0}</TableCell>
+                          <TableCell className="text-right">{playerStat.wicketsTaken || 0}</TableCell>
+                          <TableCell className="text-right">{economy}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  {matchStats.filter(stat => stat.teamId === match.team1 && stat.ballsBowled > 0).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        No bowling data available for this team
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-12 text-gray-500">
+          Scorecard is not available for this match yet.
+        </div>
+      )}
+    </CardContent>
+  </Card>
+</TabsContent>
             
             <TabsContent value="teams">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -530,7 +684,7 @@ export default function MatchDetailPage() {
                       <TableBody>
                         {team2Players.length > 0 ? (
                           team2Players.map((player, index) => (
-                            <TableRow key={player._id || index}>
+                            <TableRow key={player.id || index}>
                               <TableCell>{player.playerName || "Unknown"}</TableCell>
                               <TableCell>{player.specialization || "N/A"}</TableCell>
                             </TableRow>

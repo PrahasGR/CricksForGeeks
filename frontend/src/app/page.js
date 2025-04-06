@@ -28,6 +28,9 @@ export default function Home() {
                 <Button size="lg" variant="outline" asChild>
                   <Link href="/teams">View Teams</Link>
                 </Button>
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="/matches">View Matches</Link>
+                </Button>
               </div>
             </div>
             <div className="flex-1 relative">

@@ -25,7 +25,7 @@ const matches = sequelize.define('Matches',{
         defaultValue:0
     },
     team1: { type: DataTypes.UUID, references: { model: 'team', key: 'id' } },
-  team2: { type: DataTypes.UUID, references: { model: 'team', key: 'id' } },
+    team2: { type: DataTypes.UUID, references: { model: 'team', key: 'id' } },
     firstBatting: {
         type: DataTypes.STRING,
     },
