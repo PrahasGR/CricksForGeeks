@@ -4,11 +4,11 @@ import matches from "../model/matches.model.js";
 
 const addBall = async (req, res) => {
   try {
+    const match = req.params.id
     // Destructure incoming ball data (including innings indicator)
     const {
       ballNo,
-      batsman,
-      match,        // match id
+      batsman,        
       bowler,
       runs,
       wicket,

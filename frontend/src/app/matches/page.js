@@ -115,7 +115,7 @@ export default function MatchesPage() {
         
         if (response.ok) {
           const teamData = await response.json();
-          teamDetailsObj[teamId] = teamData;
+          teamDetailsObj[teamId] = teamData.attr;
         }
       }
       

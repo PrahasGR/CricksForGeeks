@@ -43,8 +43,11 @@ const createMatch = async (req, res) => {
                 where: { id: playerId },
                 attributes: ['specialization']
             });
+            console.log(team1);
+            
             return matchStats.create({
                 playerId,
+                teamId: team1,
                 matchId: match.id,
                 roleInMatch: player ? player.specialization : 'unknown'
             });
@@ -58,6 +61,7 @@ const createMatch = async (req, res) => {
             });
             return matchStats.create({
                 playerId,
+                teamId: team2,
                 matchId: match.id,
                 roleInMatch: player ? player.specialization : 'unknown'
             });

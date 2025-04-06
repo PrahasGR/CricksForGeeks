@@ -4,7 +4,9 @@ const matchStats=sequelize.define('matchStats',{
     matchId: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
-    
+    },
+    teamId: {
+        type: DataTypes.UUID
     },
     playerId: {
         type: DataTypes.UUID,
