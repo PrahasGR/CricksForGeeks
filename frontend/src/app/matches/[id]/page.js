@@ -1,0 +1,608 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Calendar,
+  Trophy,
+  MapPin,
+  Users,
+  ArrowLeft,
+  Loader2,
+  Clock,
+  Award,
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+export default function MatchDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const matchId = params.id;
+
+  const [match, setMatch] = useState(null);
+  const [team1Details, setTeam1Details] = useState(null);
+  const [team2Details, setTeam2Details] = useState(null);
+  const [team1Players, setTeam1Players] = useState([]);
+  const [team2Players, setTeam2Players] = useState([]);
+  const [matchStats, setMatchStats] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const isLoggedIn = typeof window !== "undefined"
+    ? localStorage.getItem("isLoggedIn") === "true"
+    : false;
+  const token = typeof window !== "undefined"
+    ? localStorage.getItem("token")
+    : null;
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      toast.error("Please login to view match details");
+      router.push("/login");
+      return;
+    }
+    
+    fetchMatchDetails();
+  }, [isLoggedIn, matchId, router]);
+
+  const fetchMatchDetails = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Fetch match details
+      const response = await fetch("http://localhost:5000/api/get/match", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ id: matchId }),
+        credentials: "include",
+      });
+
+      const matchData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(matchData.message || "Failed to fetch match details");
+      }
+
+      setMatch(matchData);
+      
+      // Fetch details for both teams
+      if (matchData.team1) {
+        await fetchTeamDetails(matchData.team1, true);
+      }
+      
+      if (matchData.team2) {
+        await fetchTeamDetails(matchData.team2, false);
+      }
+      
+      // Fetch match statistics if available
+      await fetchMatchStats(matchId);
+      
+    } catch (error) {
+      console.error("Error fetching match details:", error);
+      setError(error.message || "Failed to load match details. Please try again.");
+      toast.error("Failed to load match details");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const fetchTeamDetails = async (teamId, isTeam1) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/get/team/${teamId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch team data: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Update the appropriate team's data
+      if (isTeam1) {
+        setTeam1Details(data.attr);
+      } else {
+        setTeam2Details(data.attr);
+      }
+      
+      // Fetch player details for this team if players exist
+      if (data.attr.playerID && data.attr.playerID.length > 0) {
+        const players = await fetchPlayerDetails(data.attr.playerID);
+        
+        // Set player data for the appropriate team
+        if (isTeam1) {
+          setTeam1Players(players);
+        } else {
+          setTeam2Players(players);
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching team details for team ${teamId}:`, error);
+      setError(prev => prev || `Failed to fetch details for ${isTeam1 ? 'Team 1' : 'Team 2'}`);
+    }
+  };
+  
+  const fetchPlayerDetails = async (playerIds) => {
+    try {
+      const playerPromises = playerIds.map(playerId => 
+        fetch(`http://localhost:5000/api/get/player/${playerId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          credentials: "include",
+        })
+        .then(res => {
+          if (!res.ok) throw new Error(`Failed to fetch player ${playerId}`);
+          return res.json();
+        })
+        .then(data => data.attr)
+      );
+      
+      const playerResults = await Promise.all(playerPromises);
+      return playerResults;
+    } catch (error) {
+      console.error("Error fetching player details:", error);
+      setError(prev => prev || "Failed to fetch player details");
+      return [];
+    }
+  };
+  
+  const fetchMatchStats = async (matchId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/get/match/stats/${matchId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        credentials: "include",
+      });
+      
+      if (response.ok) {
+        const statsData = await response.json();
+        setMatchStats(statsData.attr || []);
+      }
+    } catch (error) {
+      console.error("Error fetching match statistics:", error);
+      // Don't set an error state here as this is optional data
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "Date not specified";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+  
+  // Format time for display
+  const formatTime = (timeString) => {
+    if (!timeString) return "Time not specified";
+    const date = new Date(timeString);
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Function to determine the status badge color
+  const getStatusBadgeColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'upcoming':
+        return 'bg-blue-100 text-blue-800';
+      case 'live':
+        return 'bg-green-100 text-green-800';
+      case 'completed':
+        return 'bg-gray-100 text-gray-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="container mx-auto py-8 px-4">
+      <Button variant="ghost" className="mb-6" onClick={() => router.back()}>
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to Matches
+      </Button>
+      
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading match details...</span>
+        </div>
+      ) : match ? (
+        <>
+          <Card className="mb-8 overflow-hidden">
+            <CardHeader className="bg-slate-50">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div>
+                  <CardTitle className="text-2xl md:text-3xl mb-2">
+                    {team1Details?.teamName || "Team 1"} vs {team2Details?.teamName || "Team 2"}
+                  </CardTitle>
+                  <CardDescription className="flex items-center text-base">
+                    <Badge className={getStatusBadgeColor(match.status)}>
+                      {match.status || "Status not available"}
+                    </Badge>
+                    <span className="mx-2">•</span>
+                    <Calendar className="h-4 w-4 mr-1" />
+                    {formatDate(match.matchDate)}
+                    <span className="mx-2">•</span>
+                    <Clock className="h-4 w-4 mr-1" />
+                    {formatTime(match.matchDate)}
+                  </CardDescription>
+                </div>
+                
+                {match.matchWinner && (
+                  <div className="mt-4 md:mt-0">
+                    <Badge variant="outline" className="flex items-center bg-yellow-50 text-yellow-800 border-yellow-300">
+                      <Trophy className="h-4 w-4 mr-2 text-yellow-600" />
+                      Winner: {match.matchWinner === match.team1 
+                        ? team1Details?.teamName || "Team 1" 
+                        : team2Details?.teamName || "Team 2"}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-3">
+                    <MapPin className="h-5 w-5 text-gray-500 mt-0.5" />
+                    <div>
+                      <h3 className="font-medium">Venue</h3>
+                      <p className="text-gray-600">{match.venue || "Venue not specified"}</p>
+                    </div>
+                  </div>
+                  
+                  {match.umpires && (
+                    <div className="flex items-start space-x-3">
+                      <Users className="h-5 w-5 text-gray-500 mt-0.5" />
+                      <div>
+                        <h3 className="font-medium">Umpires</h3>
+                        <p className="text-gray-600">{match.umpires}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="space-y-4">
+                  {match.tossWinner && (
+                    <div className="flex items-start space-x-3">
+                      <Award className="h-5 w-5 text-gray-500 mt-0.5" />
+                      <div>
+                        <h3 className="font-medium">Toss</h3>
+                        <p className="text-gray-600">
+                          {match.tossWinner === match.team1 
+                            ? team1Details?.teamName || "Team 1" 
+                            : team2Details?.teamName || "Team 2"} 
+                          {match.tossDecision && ` elected to ${match.tossDecision} first`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {match.matchDescription && (
+                    <div className="flex items-start space-x-3">
+                      <div>
+                        <h3 className="font-medium">Match Description</h3>
+                        <p className="text-gray-600">{match.matchDescription}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Tabs defaultValue="scorecard" className="w-full">
+            <TabsList className="mb-6">
+              <TabsTrigger value="scorecard">Scorecard</TabsTrigger>
+              <TabsTrigger value="teams">Teams</TabsTrigger>
+              <TabsTrigger value="statistics">Statistics</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="scorecard">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Match Scorecard</CardTitle>
+                  <CardDescription>
+                    Detailed batting and bowling statistics for this match
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {console.log(matchStats)}
+                  {matchStats  ? (
+                    <div className="space-y-8">
+                      {/* Team 1 Innings */}
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">{team1Details?.teamName || "Team 1"} Innings</h3>
+                        <Table>
+                          <TableCaption>Batting</TableCaption>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Batter</TableHead>
+                              <TableHead>Runs</TableHead>
+                              <TableHead>Balls</TableHead>
+                              <TableHead>4s</TableHead>
+                              <TableHead>6s</TableHead>
+                              <TableHead>SR</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {/* Placeholder for batting stats */}
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                Batting scorecard will be displayed here
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                        
+                        <div className="mt-6">
+                          <Table>
+                            <TableCaption>Bowling</TableCaption>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Bowler</TableHead>
+                                <TableHead>Overs</TableHead>
+                                <TableHead>Maidens</TableHead>
+                                <TableHead>Runs</TableHead>
+                                <TableHead>Wickets</TableHead>
+                                <TableHead>Economy</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {/* Placeholder for bowling stats */}
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                  Bowling scorecard will be displayed here
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      {/* Team 2 Innings */}
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">{team2Details?.teamName || "Team 2"} Innings</h3>
+                        <Table>
+                          <TableCaption>Batting</TableCaption>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Batter</TableHead>
+                              <TableHead>Runs</TableHead>
+                              <TableHead>Balls</TableHead>
+                              <TableHead>4s</TableHead>
+                              <TableHead>6s</TableHead>
+                              <TableHead>SR</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {/* Placeholder for batting stats */}
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                Batting scorecard will be displayed here
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                        
+                        <div className="mt-6">
+                          <Table>
+                            <TableCaption>Bowling</TableCaption>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Bowler</TableHead>
+                                <TableHead>Overs</TableHead>
+                                <TableHead>Maidens</TableHead>
+                                <TableHead>Runs</TableHead>
+                                <TableHead>Wickets</TableHead>
+                                <TableHead>Economy</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {/* Placeholder for bowling stats */}
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                  Bowling scorecard will be displayed here
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      Scorecard is not available for this match yet.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="teams">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Team 1 */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{team1Details?.teamName || "Team 1"}</CardTitle>
+                    <CardDescription>
+                      Players and roles
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Player</TableHead>
+                          <TableHead>Role</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {team1Players.length > 0 ? (
+                          team1Players.map((player, index) => (
+                            <TableRow key={player._id || index}>
+                              <TableCell>{player.playerName || "Unknown"}</TableCell>
+                              <TableCell>{player.specialization || "N/A"}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={2} className="text-center py-8 text-gray-500">
+                              No player information available
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+                
+                {/* Team 2 */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{team2Details?.teamName || "Team 2"}</CardTitle>
+                    <CardDescription>
+                      Players and roles
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Player</TableHead>
+                          <TableHead>Role</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {team2Players.length > 0 ? (
+                          team2Players.map((player, index) => (
+                            <TableRow key={player._id || index}>
+                              <TableCell>{player.playerName || "Unknown"}</TableCell>
+                              <TableCell>{player.specialization || "N/A"}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={2} className="text-center py-8 text-gray-500">
+                              No player information available
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="statistics">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Match Statistics</CardTitle>
+                  <CardDescription>
+                    Key statistics and performance metrics for this match
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Placeholder for match statistics */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Top Scorer</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-center py-4 text-gray-500">
+                          Statistics will be displayed here
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Best Bowler</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-center py-4 text-gray-500">
+                          Statistics will be displayed here
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Player of the Match</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-center py-4 text-gray-500">
+                          Statistics will be displayed here
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </>
+      ) : (
+        <Alert className="mt-8">
+          <AlertDescription>No match data found for this ID.</AlertDescription>
+        </Alert>
+      )}
+    </div>
+  );
+}

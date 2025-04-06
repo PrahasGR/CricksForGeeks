@@ -8,6 +8,7 @@ import router from './routes/match.routes.js';
 import playerRouter from './routes/players.routes.js';
 import teamRouter from './routes/team.routes.js';
 import cors from 'cors';
+import ballRouter from './routes/ball.routes.js';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use('/api', authRoutes);
 app.use('/api', router);
 app.use('/api', playerRouter);
 app.use('/api', teamRouter)
+app.use('/api',ballRouter)
 
 // Sync Database & Start Server
 const PORT = process.env.PORT || 5000;
