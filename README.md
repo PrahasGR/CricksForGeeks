@@ -243,6 +243,5 @@ The application provides the following API endpoints:
 
 - Advanced statistics visualizations
 - Support for tournament management
-- Mobile application
 - Live match updates
 - AI-powered cricket analytics
