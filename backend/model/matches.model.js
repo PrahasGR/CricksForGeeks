@@ -1,6 +1,6 @@
 import sequelize from "../config/database.js";
 import { DataTypes } from "sequelize";
-sequelize.sync({alter:true});
+// sequelize.sync({alter:true});
 const matches = sequelize.define('Matches',{
     id: {
         type: DataTypes.UUID,
