@@ -234,10 +234,10 @@ The application provides the following API endpoints:
 
 ## Contributors
 
-- [Vineet]
-- [Prahaas]
-- [Prabhav]
-- [Shanjiv]
+- Vineet
+- Prahaas
+- Prabhav
+- Shanjiv
 
 ## Future Enhancements
 
