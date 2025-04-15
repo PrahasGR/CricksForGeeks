@@ -234,15 +234,10 @@ The application provides the following API endpoints:
 
 ## Contributors
 
-- [Your Name]
-- [Team Member 1]
-- [Team Member 2]
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
+- [Vineet]
+- [Prahaas]
+- [Prabhav]
+- [Shanjiv]
 
 ## Future Enhancements
 
