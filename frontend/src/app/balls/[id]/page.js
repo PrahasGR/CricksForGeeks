@@ -26,9 +26,10 @@ import {
   CheckCircle,
   Loader2,
   Users,
-  User,
+  RefreshCcw,
+  Info,
 } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -38,17 +39,25 @@ export default function AddBallPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [matches, setMatches] = useState([]);
   const [players, setPlayers] = useState([]);
-  const [selectedMatch, setSelectedMatch] = useState("");
   const [selectedBatsman, setSelectedBatsman] = useState("");
   const [selectedBowler, setSelectedBowler] = useState("");
   const [selectedBatsmanOut, setSelectedBatsmanOut] = useState("");
-  const match = useParams();
+  const params = useParams();
+  const [team1Players, setTeam1Players] = useState([]);
+  const [team2Players, setTeam2Players] = useState([]);
+  const [matchDetails, setMatchDetails] = useState(null);
+  const [battingTeamPlayers, setBattingTeamPlayers] = useState([]);
+  const [bowlingTeamPlayers, setBowlingTeamPlayers] = useState([]);
+  const [lastBallData, setLastBallData] = useState(null);
+  const [currentOver, setCurrentOver] = useState(0);
+  const [currentBall, setCurrentBall] = useState(1);
+  const [maxOvers, setMaxOvers] = useState(20); // Default, will be updated from match format
+
   const [ballData, setBallData] = useState({
-    ballNo: 0,
+    ballNo: 0.1,
     batsman: "",
-    match: match,
+    match: params.id,
     bowler: "",
     runs: 0,
     wicket: false,
@@ -61,12 +70,14 @@ export default function AddBallPage() {
     is_six: false,
     innings: 1,
   });
+  
   const router = useRouter();
-
+  
   const isLoggedIn =
     typeof window !== "undefined"
       ? localStorage.getItem("isLoggedIn") === "true"
       : false;
+      
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -77,28 +88,223 @@ export default function AddBallPage() {
       return;
     }
 
-    fetchMatches();
+    fetchMatchDetails();
     fetchPlayers();
-  }, [isLoggedIn, router]);
+    fetchLastBallData();
+  }, [isLoggedIn, router, params.id]);
 
-  const fetchMatches = async () => {
+  // Update batting and bowling teams whenever innings changes
+  useEffect(() => {
+    updateTeamsBasedOnInnings(ballData.innings);
+  }, [ballData.innings, team1Players, team2Players, matchDetails]);
+
+  // Update ball number display
+  useEffect(() => {
+    const formattedBallNo = currentOver + (currentBall / 10);
+    setBallData(prev => ({
+      ...prev,
+      ballNo: formattedBallNo
+    }));
+  }, [currentOver, currentBall]);
+
+  const updateTeamsBasedOnInnings = (innings) => {
+    // First innings: team1 bats, team2 bowls
+    // Second innings: team2 bats, team1 bowls
+    if (innings === 1) {
+      setBattingTeamPlayers(team1Players);
+      setBowlingTeamPlayers(team2Players);
+    } else {
+      setBattingTeamPlayers(team2Players);
+      setBowlingTeamPlayers(team1Players);
+    }
+    
+    // Reset selected players when innings changes
+    setSelectedBatsman("");
+    setSelectedBowler("");
+  };
+
+  const fetchLastBallData = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/getall/matches", {
+      const response = await fetch(`http://localhost:5000/api/get/last-ball/${params.id}`, {
+        method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         credentials: "include",
       });
 
-      const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch matches");
+        throw new Error("Failed to fetch last ball data");
       }
 
-      setMatches(data.matches || []);
+      const data = await response.json();
+      
+      if (data && data.ballNo) {
+        setLastBallData(data);
+        
+        // Parse the ball number to set current over and ball
+        const ballNum = parseFloat(data.ballNo);
+        const over = Math.floor(ballNum);
+        const ball = Math.round((ballNum - over) * 10);
+        
+        // Determine next ball number based on whether last ball was a wide/no-ball
+        if (data.wide || data.noBall) {
+          // If last ball was wide or no-ball, use the same ball number
+          setCurrentOver(over);
+          setCurrentBall(ball);
+        } else {
+          // Normal progression
+          if (ball === 6) {
+            // Move to next over
+            setCurrentOver(over + 1);
+            setCurrentBall(1);
+          } else {
+            // Increment ball within same over
+            setCurrentOver(over);
+            setCurrentBall(ball + 1);
+          }
+        }
+        
+        // Set innings based on last ball
+        setBallData(prev => ({
+          ...prev,
+          innings: data.innings || 1
+        }));
+        
+        // Check if we need to move to next innings
+        if (data.innings === 1 && over >= (maxOvers - 1) && ball === 6 && !data.wide && !data.noBall) {
+          // First innings complete, move to second innings
+          setBallData(prev => ({
+            ...prev,
+            innings: 2
+          }));
+          setCurrentOver(0);
+          setCurrentBall(1);
+        }
+      } else {
+        // No last ball data, start from the beginning
+        setCurrentOver(0);
+        setCurrentBall(1);
+        setBallData(prev => ({
+          ...prev,
+          ballNo: 0.1,
+          innings: 1
+        }));
+      }
     } catch (error) {
-      console.error("Error fetching matches:", error);
-      toast.error("Failed to load matches");
+      console.error("Error fetching last ball data:", error);
+      // If we can't get last ball, default to start of the match
+      setCurrentOver(0);
+      setCurrentBall(1);
+    }
+  };
+
+  const fetchMatchDetails = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Fetch match details
+      const response = await fetch("http://localhost:5000/api/get/match", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ id: params.id }),
+        credentials: "include",
+      });
+
+      const matchData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(matchData.message || "Failed to fetch match details");
+      }
+
+      setMatchDetails(matchData);
+      
+      // Set max overs from match format
+      if (matchData.format) {
+        setMaxOvers(parseInt(matchData.format, 10));
+      }
+      
+      // Fetch details for both teams
+      if (matchData.team1) {
+        await fetchTeamDetails(matchData.team1, true);
+      }
+      
+      if (matchData.team2) {
+        await fetchTeamDetails(matchData.team2, false);
+      }
+      
+    } catch (error) {
+      console.error("Error fetching match details:", error);
+      setError(error.message || "Failed to load match details. Please try again.");
+      toast.error("Failed to load match details");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const fetchTeamDetails = async (teamId, isTeam1) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/get/team/${teamId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch team data: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Fetch player details for this team if players exist
+      if (data.attr.playerID && data.attr.playerID.length > 0) {
+        const players = await fetchPlayerDetails(data.attr.playerID);
+        
+        // Set player data for the appropriate team
+        if (isTeam1) {
+          setTeam1Players(players);
+        } else {
+          setTeam2Players(players);
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching team details for team ${teamId}:`, error);
+      setError(prev => prev || `Failed to fetch details for ${isTeam1 ? 'Team 1' : 'Team 2'}`);
+    }
+  };
+  
+  const fetchPlayerDetails = async (playerIds) => {
+    try {
+      const playerPromises = playerIds.map(playerId => 
+        fetch(`http://localhost:5000/api/get/player/${playerId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          credentials: "include",
+        })
+        .then(res => {
+          if (!res.ok) throw new Error(`Failed to fetch player ${playerId}`);
+          return res.json();
+        })
+        .then(data => data.attr)
+      );
+      
+      const playerResults = await Promise.all(playerPromises);
+      return playerResults;
+    } catch (error) {
+      console.error("Error fetching player details:", error);
+      setError(prev => prev || "Failed to fetch player details");
+      return [];
     }
   };
 
@@ -141,6 +347,32 @@ export default function AddBallPage() {
     });
   };
 
+  const updateBallNumber = (isExtras) => {
+    // Only increment ball number for legal deliveries
+    if (!isExtras) {
+      if (currentBall === 6) {
+        // End of over, move to next over
+        setCurrentOver(currentOver + 1);
+        setCurrentBall(1);
+      } else {
+        // Increment ball within current over
+        setCurrentBall(currentBall + 1);
+      }
+    }
+    
+    // Check if innings should change (end of allotted overs)
+    if (currentOver >= maxOvers - 1 && currentBall === 6 && !isExtras && ballData.innings === 1) {
+      // First innings complete, reset for second innings
+      setBallData(prev => ({
+        ...prev,
+        innings: 2
+      }));
+      setCurrentOver(0);
+      setCurrentBall(1);
+      toast.info("First innings complete! Starting second innings.");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -148,16 +380,29 @@ export default function AddBallPage() {
     setSuccess(false);
 
     try {
+      // Check if current innings is over
+      if (ballData.innings === 1 && currentOver >= maxOvers && !ballData.wide && !ballData.noBall) {
+        toast.error(`First innings is limited to ${maxOvers} overs. Please start second innings.`);
+        setIsLoading(false);
+        return;
+      }
+      
+      if (ballData.innings === 2 && currentOver >= maxOvers && !ballData.wide && !ballData.noBall) {
+        toast.error(`Match is limited to ${maxOvers} overs per innings. The match is complete.`);
+        setIsLoading(false);
+        return;
+      }
+
       // Prepare the payload according to the controller's structure
       const payload = {
         ...ballData,
-        match: selectedMatch,
+        match: params.id,
         batsman: selectedBatsman,
         bowler: selectedBowler,
         batsmanOut: ballData.wicket ? selectedBatsmanOut : null,
       };
 
-      const response = await fetch(`http://localhost:5000/api/add-ball/${match.id}`, {
+      const response = await fetch(`http://localhost:5000/api/add-ball/${params.id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -166,7 +411,6 @@ export default function AddBallPage() {
         credentials: "include",
         body: JSON.stringify(payload),
       });
-      console.log(match);
       
       const data = await response.json();
 
@@ -177,10 +421,15 @@ export default function AddBallPage() {
       setSuccess(true);
       toast.success("Ball recorded successfully");
 
+      // Determine if this was an extra (wide or no-ball)
+      const isExtras = ballData.wide || ballData.noBall;
+      
+      // Update ball number for next delivery
+      updateBallNumber(isExtras);
+
       // Reset form for next entry (except match and innings)
-      setBallData({
-        ...ballData,
-        ballNo: parseInt(ballData.ballNo, 10) + 1,
+      setBallData(prev => ({
+        ...prev,
         runs: 0,
         wicket: false,
         byes: 0,
@@ -189,7 +438,7 @@ export default function AddBallPage() {
         noBall: false,
         is_four: false,
         is_six: false,
-      });
+      }));
       setSelectedBatsmanOut("");
     } catch (error) {
       console.error("Error recording ball:", error);
@@ -215,6 +464,26 @@ export default function AddBallPage() {
     }
   };
 
+  // Function to refresh and get the latest ball data
+  const refreshLastBall = () => {
+    fetchLastBallData();
+    toast.info("Ball data refreshed");
+  };
+
+  // Calculate current match status
+  const getCurrentMatchStatus = () => {
+    if (!matchDetails) return "";
+    
+    let status = "";
+    if (ballData.innings === 1) {
+      status = `1st Innings: ${currentOver}.${currentBall} overs`;
+    } else {
+      status = `2nd Innings: ${currentOver}.${currentBall} overs`;
+    }
+    
+    return status;
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -225,12 +494,18 @@ export default function AddBallPage() {
           </p>
         </div>
 
-        <Button asChild variant="outline">
-          <Link href="/matches">
-            <Users className="mr-2 h-4 w-4" />
-            View Matches
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={refreshLastBall}>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Refresh Ball Data
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/matches">
+              <Users className="mr-2 h-4 w-4" />
+              View Matches
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -249,51 +524,62 @@ export default function AddBallPage() {
         </Alert>
       )}
 
+      <Card className="mb-6">
+        <CardHeader className="bg-gray-50">
+          <div className="flex justify-between items-center">
+            <CardTitle>Current Match Status</CardTitle>
+            <Badge variant="outline" className="text-sm">
+              {matchDetails?.format || "0"} Overs Match
+            </Badge>
+          </div>
+          <CardDescription>
+            {matchDetails ? (
+              <>
+                <div className="font-medium">{matchDetails.title || "Match #" + params.id}</div>
+                <div className="mt-1 text-sm">
+                  {getCurrentMatchStatus()}
+                </div>
+              </>
+            ) : (
+              "Loading match details..."
+            )}
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Ball Information</CardTitle>
           <CardDescription>
             Enter details for the current delivery
           </CardDescription>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge className="text-lg py-1 px-3">
+              Ball {currentOver}.{currentBall}
+            </Badge>
+            <Badge variant="outline" className="text-lg py-1 px-3">
+              Innings {ballData.innings}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
+            <Alert className="mb-6">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Automatic Ball Numbering</AlertTitle>
+              <AlertDescription>
+                Ball numbers are automatically tracked. Wide balls and no balls don't increment the ball count.
+              </AlertDescription>
+            </Alert>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Match Selection */}
-              
-
-              {/* Innings */}
-              <div className="space-y-2">
-                <Label>Innings</Label>
-                <Select
-                  value={ballData.innings.toString()}
-                  onValueChange={(value) =>
-                    setBallData({ ...ballData, innings: parseInt(value, 10) })
-                  }
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select innings" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">First Innings</SelectItem>
-                    <SelectItem value="2">Second Innings</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Ball Number */}
-              <div className="space-y-2">
-                <Label>Ball Number</Label>
-                <Input
-                  type="number"
-                  name="ballNo"
-                  value={ballData.ballNo}
-                  onChange={handleNumberInput}
-                  placeholder="e.g., 1.2 (over.ball)"
-                  required
-                />
-              </div>
+              {/* Hidden read-only ball number field */}
+              <input 
+                type="hidden" 
+                name="ballNo" 
+                value={ballData.ballNo}
+                readOnly
+              />
 
               {/* Batsman */}
               <div className="space-y-2">
@@ -307,7 +593,7 @@ export default function AddBallPage() {
                     <SelectValue placeholder="Select batsman" />
                   </SelectTrigger>
                   <SelectContent>
-                    {players.map((player) => (
+                    {battingTeamPlayers.map((player) => (
                       <SelectItem key={player.id} value={player.id}>
                         <div className="flex items-center">
                           {player.playerName}
@@ -339,12 +625,7 @@ export default function AddBallPage() {
                     <SelectValue placeholder="Select bowler" />
                   </SelectTrigger>
                   <SelectContent>
-                    {players
-                      .filter(
-                        (player) =>
-                          player.specialization === "Bowler" ||
-                          player.specialization === "All-rounder"
-                      )
+                    {bowlingTeamPlayers
                       .map((player) => (
                         <SelectItem key={player.id} value={player.id}>
                           <div className="flex items-center">
@@ -517,7 +798,7 @@ export default function AddBallPage() {
                       <SelectValue placeholder="Select batsman out" />
                     </SelectTrigger>
                     <SelectContent>
-                      {players.map((player) => (
+                      {battingTeamPlayers.map((player) => (
                         <SelectItem key={player.id} value={player.id}>
                           <div className="flex items-center">
                             {player.playerName}

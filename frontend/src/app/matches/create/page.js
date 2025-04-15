@@ -34,18 +34,21 @@ export default function CreateMatchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     team1: "",
     team2: "",
     venue: "",
     matchDate: new Date(),
-    status: "SCHEDULED"
+    status: "SCHEDULED",
+    battingFirst: "",
+    format: "", // Total overs input
   });
 
-  const isLoggedIn = typeof window !== "undefined" 
-    ? localStorage.getItem("isLoggedIn") === "true" 
+  const isLoggedIn = typeof window !== "undefined"
+    ? localStorage.getItem("isLoggedIn") === "true"
     : false;
+
   const token = typeof window !== "undefined"
     ? localStorage.getItem("token")
     : null;
@@ -56,7 +59,7 @@ export default function CreateMatchPage() {
       router.push("/login");
       return;
     }
-    
+
     fetchTeams();
   }, [isLoggedIn, router]);
 
@@ -64,12 +67,12 @@ export default function CreateMatchPage() {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const response = await fetch("http://localhost:5000/api/getall/teams", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         credentials: "include",
       });
@@ -91,46 +94,42 @@ export default function CreateMatchPage() {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (formData.team1 === formData.team2) {
       toast.error("A team cannot play against itself");
       return;
     }
-    
-    if (!formData.team1 || !formData.team2) {
-      toast.error("Please select both teams");
+
+    if (!formData.team1 || !formData.team2 || !formData.battingFirst || !formData.format) {
+      toast.error("Please complete all required fields");
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
       setError(null);
-      
-      // Create a copy of the form data to avoid modifying the state directly
+
       const submissionData = { ...formData };
-      
-      // Format the date to ISO string format (YYYY-MM-DDT00:00:00.000Z)
-      // This ensures proper serialization of the Date object for the API
-      if (submissionData.date instanceof Date) {
-        submissionData.date = submissionData.date.toISOString();
+      if (submissionData.matchDate instanceof Date) {
+        submissionData.matchDate = submissionData.matchDate.toISOString();
       }
-      
+
       const response = await fetch("http://localhost:5000/api/create/match", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         credentials: "include",
-        body: JSON.stringify(submissionData)
+        body: JSON.stringify(submissionData),
       });
 
       const data = await response.json();
@@ -184,15 +183,12 @@ export default function CreateMatchPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="team1">Team 1</Label>
-                <Select 
-                  onValueChange={(value) => handleInputChange("team1", value)}
-                  value={formData.team1}
-                >
+                <Select onValueChange={(value) => handleInputChange("team1", value)} value={formData.team1}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select team 1" />
                   </SelectTrigger>
                   <SelectContent>
-                    {teams.map(team => (
+                    {teams.map((team) => (
                       <SelectItem key={`team1-${team.id}`} value={team.id}>
                         {team.teamName}
                       </SelectItem>
@@ -200,18 +196,15 @@ export default function CreateMatchPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="team2">Team 2</Label>
-                <Select 
-                  onValueChange={(value) => handleInputChange("team2", value)}
-                  value={formData.team2}
-                >
+                <Select onValueChange={(value) => handleInputChange("team2", value)} value={formData.team2}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select team 2" />
                   </SelectTrigger>
                   <SelectContent>
-                    {teams.map(team => (
+                    {teams.map((team) => (
                       <SelectItem key={`team2-${team.id}`} value={team.id}>
                         {team.teamName}
                       </SelectItem>
@@ -219,7 +212,7 @@ export default function CreateMatchPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="venue">Venue</Label>
                 <Input
@@ -229,9 +222,9 @@ export default function CreateMatchPage() {
                   onChange={(e) => handleInputChange("venue", e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="date">Match Date</Label>
+                <Label htmlFor="matchDate">Match Date</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -239,26 +232,23 @@ export default function CreateMatchPage() {
                       className="w-full justify-start text-left font-normal"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.date ? format(formData.date, "PPP") : "Select a date"}
+                      {formData.matchDate ? format(formData.matchDate, "PPP") : "Select a date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
-                      selected={formData.date}
-                      onSelect={(date) => handleInputChange("date", date)}
+                      selected={formData.matchDate}
+                      onSelect={(date) => handleInputChange("matchDate", date)}
                       initialFocus
                     />
                   </PopoverContent>
                 </Popover>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="status">Match Status</Label>
-                <Select 
-                  onValueChange={(value) => handleInputChange("status", value)}
-                  value={formData.status}
-                >
+                <Select onValueChange={(value) => handleInputChange("status", value)} value={formData.status}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -267,6 +257,42 @@ export default function CreateMatchPage() {
                     <SelectItem value="ONGOING">Ongoing</SelectItem>
                     <SelectItem value="COMPLETED">Completed</SelectItem>
                     <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="format">Total Overs</Label>
+                <Input
+                  id="format"
+                  type="number"
+                  min={1}
+                  placeholder="Enter total number of overs"
+                  value={formData.format}
+                  onChange={(e) => handleInputChange("format", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="battingFirst">Batting First</Label>
+                <Select
+                  onValueChange={(value) => handleInputChange("battingFirst", value)}
+                  value={formData.battingFirst}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select batting first team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formData.team1 && formData.team2 && (
+                      <>
+                        <SelectItem value={formData.team1}>
+                          {teams.find((team) => team.id === formData.team1)?.teamName}
+                        </SelectItem>
+                        <SelectItem value={formData.team2}>
+                          {teams.find((team) => team.id === formData.team2)?.teamName}
+                        </SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

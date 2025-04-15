@@ -1,6 +1,6 @@
 import sequelize from "../config/database.js";
 import { DataTypes } from "sequelize";
-
+sequelize.sync({alter:true});
 const matchBallsSchema = sequelize.define('MatchBalls', {
   ballID: {
     type: DataTypes.UUID,
@@ -8,7 +8,7 @@ const matchBallsSchema = sequelize.define('MatchBalls', {
     primaryKey: true
   },
   ballNo: {
-    type: DataTypes.INTEGER
+    type: DataTypes.FLOAT
   },
   batsman: {
     type: DataTypes.UUID,

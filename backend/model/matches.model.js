@@ -1,5 +1,6 @@
 import sequelize from "../config/database.js";
 import { DataTypes } from "sequelize";
+sequelize.sync({alter:true});
 const matches = sequelize.define('Matches',{
     id: {
         type: DataTypes.UUID,
@@ -27,7 +28,7 @@ const matches = sequelize.define('Matches',{
     team1: { type: DataTypes.UUID, references: { model: 'team', key: 'id' } },
     team2: { type: DataTypes.UUID, references: { model: 'team', key: 'id' } },
     firstBatting: {
-        type: DataTypes.STRING,
+        type: DataTypes.UUID,
     },
     firstInningsScore: {
         type: DataTypes.INTEGER

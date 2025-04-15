@@ -271,15 +271,15 @@ export default function MatchDetailPage() {
                     {team1Details?.teamName || "Team 1"} vs {team2Details?.teamName || "Team 2"}
                   </CardTitle>
                   <CardDescription className="flex items-center text-base">
-                    <Badge className={getStatusBadgeColor(match.status)}>
+                    {/* <Badge className={getStatusBadgeColor(match.status)}>
                       {match.status || "Status not available"}
-                    </Badge>
-                    <span className="mx-2">•</span>
+                    </Badge> */}
+                    {/* <span className="mx-2">•</span> */}
                     <Calendar className="h-4 w-4 mr-1" />
                     {formatDate(match.matchDate)}
-                    <span className="mx-2">•</span>
+                    {/* <span className="mx-2">•</span>
                     <Clock className="h-4 w-4 mr-1" />
-                    {formatTime(match.matchDate)}
+                    {formatTime(match.matchDate)} */}
                   </CardDescription>
                 </div>
                 
@@ -704,52 +704,380 @@ export default function MatchDetailPage() {
             </TabsContent>
             
             <TabsContent value="statistics">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Match Statistics</CardTitle>
-                  <CardDescription>
-                    Key statistics and performance metrics for this match
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Placeholder for match statistics */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Top Scorer</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-center py-4 text-gray-500">
-                          Statistics will be displayed here
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Best Bowler</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-center py-4 text-gray-500">
-                          Statistics will be displayed here
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Player of the Match</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-center py-4 text-gray-500">
-                          Statistics will be displayed here
-                        </div>
-                      </CardContent>
-                    </Card>
+  <Card>
+    <CardHeader>
+      <CardTitle>Match Statistics</CardTitle>
+      <CardDescription>
+        Key statistics and performance metrics for this match
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      {matchStats && matchStats.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Top Scorer */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Top Scorer</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                // Find player with highest runs
+                const topScorer = [...matchStats].sort((a, b) => (b.runs || 0) - (a.runs || 0))[0];
+                
+                if (!topScorer || topScorer.runs === 0) {
+                  return (
+                    <div className="text-center py-4 text-gray-500">
+                      No batting data available
+                    </div>
+                  );
+                }
+                
+                const player = 
+                  topScorer.teamId === match.team1
+                    ? team1Players.find(p => p.id === topScorer.playerId)
+                    : team2Players.find(p => p.id === topScorer.playerId);
+                
+                const team = topScorer.teamId === match.team1
+                  ? team1Details?.teamName || "Team 1"
+                  : team2Details?.teamName || "Team 2";
+                  
+                return (
+                  <div className="space-y-2 pt-2">
+                    <div className="font-semibold text-xl">{player?.playerName || "Unknown Player"}</div>
+                    <div className="text-gray-600 text-sm">{team}</div>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="text-3xl font-bold">{topScorer.runs}</div>
+                      <div className="text-sm text-gray-500">
+                        {topScorer.ballsFaced} balls
+                        <span className="block">
+                          SR: {topScorer.ballsFaced > 0
+                            ? ((topScorer.runs / topScorer.ballsFaced) * 100).toFixed(2)
+                            : "0.00"}
+                        </span>
+                        <span className="block">
+                          {topScorer.fours || 0} fours, {topScorer.sixes || 0} sixes
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                );
+              })()}
+            </CardContent>
+          </Card>
+          
+          {/* Best Bowler */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Best Bowler</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                // Find bowler with most wickets
+                const bowlers = matchStats.filter(stat => (stat.wicketsTaken || 0) >= 0);
+                
+                // Sort first by wickets (descending), then by runs given (ascending)
+                const bestBowler = [...bowlers].sort((a, b) => {
+                  if (b.wicketsTaken !== a.wicketsTaken) {
+                    return (b.wicketsTaken || 0) - (a.wicketsTaken || 0);
+                  }
+                  if(b.runsGiven !== a.runsGiven){
+                  return (a.runsGiven || 0) - (b.runsGiven || 0);
+                  }
+                  return (b.ballsBowled || 0) - (a.ballsBowled || 0);
+                })[0];
+                
+                if (!bestBowler || !bestBowler.ballsBowled) {
+                  return (
+                    <div className="text-center py-4 text-gray-500">
+                      No bowling data available
+                    </div>
+                  );
+                }
+                
+                const player = 
+                  bestBowler.teamId === match.team1
+                    ? team1Players.find(p => p.id === bestBowler.playerId)
+                    : team2Players.find(p => p.id === bestBowler.playerId);
+                
+                const team = bestBowler.teamId === match.team1
+                  ? team1Details?.teamName || "Team 1"
+                  : team2Details?.teamName || "Team 2";
+                  
+                const overs = Math.floor(bestBowler.ballsBowled / 6);
+                const balls = bestBowler.ballsBowled % 6;
+                const economy = bestBowler.ballsBowled > 0
+                  ? ((bestBowler.runsGiven / bestBowler.ballsBowled) * 6).toFixed(2)
+                  : "0.00";
+                
+                return (
+                  <div className="space-y-2 pt-2">
+                    <div className="font-semibold text-xl">{player?.playerName || "Unknown Player"}</div>
+                    <div className="text-gray-600 text-sm">{team}</div>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="text-3xl font-bold">{bestBowler.wicketsTaken}-{bestBowler.runsGiven}</div>
+                      <div className="text-sm text-gray-500">
+                        {overs}.{balls} overs
+                        <span className="block">
+                          Economy: {economy}
+                        </span>
+                        <span className="block">
+                          Maidens: {bestBowler.maidenOvers || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+          
+          {/* Player of the Match - Based on combined performance */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Player of the Match</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                if (matchStats.length === 0) {
+                  return (
+                    <div className="text-center py-4 text-gray-500">
+                      No data available
+                    </div>
+                  );
+                }
+                
+                // Calculate player scores based on performance
+                const playerScores = matchStats.map(stat => {
+                  // Algorithm to calculate overall impact
+                  const battingScore = (stat.runs || 0) + 
+                                      ((stat.fours || 0) * 1) + 
+                                      ((stat.sixes || 0) * 2);
+                  
+                  const bowlingScore = ((stat.wicketsTaken || 0) * 20) - 
+                                      ((stat.runsGiven || 0) / 2) +
+                                      ((stat.maidenOvers || 0) * 8);
+                  
+                  const fieldingScore = ((stat.cathcesCaught || 0) * 8) + 
+                                       ((stat.stumpingCount || 0) * 12) +
+                                       ((stat.runOutBy ? 10 : 0));
+                  
+                  const totalScore = battingScore + bowlingScore + fieldingScore;
+                  
+                  return {
+                    playerId: stat.playerId,
+                    teamId: stat.teamId,
+                    score: totalScore,
+                    stat: stat
+                  };
+                });
+                
+                // Sort by score and get the best player
+                const bestPlayer = [...playerScores].sort((a, b) => b.score - a.score)[0];
+                
+                if (!bestPlayer || bestPlayer.score === 0) {
+                  return (
+                    <div className="text-center py-4 text-gray-500">
+                      Insufficient data to determine
+                    </div>
+                  );
+                }
+                
+                const player = 
+                  bestPlayer.teamId === match.team1
+                    ? team1Players.find(p => p.id === bestPlayer.playerId)
+                    : team2Players.find(p => p.id === bestPlayer.playerId);
+                
+                const team = bestPlayer.teamId === match.team1
+                  ? team1Details?.teamName || "Team 1"
+                  : team2Details?.teamName || "Team 2";
+                
+                const playerStat = bestPlayer.stat;
+                
+                return (
+                  <div className="space-y-2 pt-2">
+                    <div className="font-semibold text-xl">{player?.playerName || "Unknown Player"}</div>
+                    <div className="text-gray-600 text-sm">{team}</div>
+                    <div className="mt-2 text-sm space-y-1">
+                      {playerStat.runs > 0 && (
+                        <div className="flex justify-between">
+                          <span>Batting:</span>
+                          <span>{playerStat.runs} runs ({playerStat.ballsFaced} balls)</span>
+                        </div>
+                      )}
+                      {playerStat.wicketsTaken > 0 && (
+                        <div className="flex justify-between">
+                          <span>Bowling:</span>
+                          <span>{playerStat.wicketsTaken}/{playerStat.runsGiven} ({Math.floor(playerStat.ballsBowled / 6)}.{playerStat.ballsBowled % 6} ov)</span>
+                        </div>
+                      )}
+                      {(playerStat.cathcesCaught > 0 || playerStat.stumpingCount > 0) && (
+                        <div className="flex justify-between">
+                          <span>Fielding:</span>
+                          <span>
+                            {playerStat.cathcesCaught > 0 ? `${playerStat.cathcesCaught} catch(es)` : ''}
+                            {playerStat.cathcesCaught > 0 && playerStat.stumpingCount > 0 ? ', ' : ''}
+                            {playerStat.stumpingCount > 0 ? `${playerStat.stumpingCount} stumping(s)` : ''}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+          
+          {/* Additional statistics cards */}
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Match Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                if (matchStats.length === 0) {
+                  return (
+                    <div className="text-center py-4 text-gray-500">
+                      No data available
+                    </div>
+                  );
+                }
+                
+                // Calculate team totals
+                const team1Total = matchStats
+                  .filter(stat => stat.teamId === match.team1)
+                  .reduce((sum, stat) => sum + (stat.runs || 0), 0);
+                
+                const team2Total = matchStats
+                  .filter(stat => stat.teamId === match.team2)
+                  .reduce((sum, stat) => sum + (stat.runs || 0), 0);
+                
+                const team1Wickets = matchStats
+                  .filter(stat => stat.teamId === match.team1 && stat.outType)
+                  .length;
+                
+                const team2Wickets = matchStats
+                  .filter(stat => stat.teamId === match.team2 && stat.outType)
+                  .length;
+                
+                // Calculate team balls faced
+                const team1BallsFaced = matchStats
+                  .filter(stat => stat.teamId === match.team1)
+                  .reduce((sum, stat) => sum + (stat.ballsFaced || 0), 0);
+                
+                const team2BallsFaced = matchStats
+                  .filter(stat => stat.teamId === match.team2)
+                  .reduce((sum, stat) => sum + (stat.ballsFaced || 0), 0);
+                
+                const team1Overs = Math.floor(team1BallsFaced / 6) + (team1BallsFaced % 6) / 10;
+                const team2Overs = Math.floor(team2BallsFaced / 6) + (team2BallsFaced % 6) / 10;
+                
+                const winningMargin = Math.abs(team1Total - team2Total);
+                const winningTeam = team1Total > team2Total ? team1Details?.teamName : team2Details?.teamName;
+                const losingTeam = team1Total > team2Total ? team2Details?.teamName : team1Details?.teamName;
+                
+                return (
+                  <div className="space-y-3 pt-2 text-sm">
+                    <div className="flex justify-between font-medium">
+                      <span>{team1Details?.teamName || "Team 1"}:</span>
+                      <span>{team1Total}/{team1Wickets} ({team1Overs.toFixed(1)} ov)</span>
+                    </div>
+                    <div className="flex justify-between font-medium">
+                      <span>{team2Details?.teamName || "Team 2"}:</span>
+                      <span>{team2Total}/{team2Wickets} ({team2Overs.toFixed(1)} ov)</span>
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="text-center font-medium">
+                      {match.matchWinner ? (
+                        <span>
+                          {winningTeam} won by {winningMargin} runs
+                        </span>
+                      ) : (
+                        <span>Match result not available</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Boundary Count</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                if (matchStats.length === 0) {
+                  return (
+                    <div className="text-center py-4 text-gray-500">
+                      No data available
+                    </div>
+                  );
+                }
+                
+                // Calculate boundary totals
+                const team1Fours = matchStats
+                  .filter(stat => stat.teamId === match.team1)
+                  .reduce((sum, stat) => sum + (stat.fours || 0), 0);
+                
+                const team1Sixes = matchStats
+                  .filter(stat => stat.teamId === match.team1)
+                  .reduce((sum, stat) => sum + (stat.sixes || 0), 0);
+                
+                const team2Fours = matchStats
+                  .filter(stat => stat.teamId === match.team2)
+                  .reduce((sum, stat) => sum + (stat.fours || 0), 0);
+                
+                const team2Sixes = matchStats
+                  .filter(stat => stat.teamId === match.team2)
+                  .reduce((sum, stat) => sum + (stat.sixes || 0), 0);
+                
+                return (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm font-medium">{team1Details?.teamName || "Team 1"}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">{team1Fours}</div>
+                          <div className="text-xs text-gray-500">Fours</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">{team1Sixes}</div>
+                          <div className="text-xs text-gray-500">Sixes</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Separator className="my-2" />
+                    
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm font-medium">{team2Details?.teamName || "Team 2"}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">{team2Fours}</div>
+                          <div className="text-xs text-gray-500">Fours</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">{team2Sixes}</div>
+                          <div className="text-xs text-gray-500">Sixes</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="text-center py-12 text-gray-500">
+          Match statistics are not available for this match yet.
+        </div>
+      )}
+    </CardContent>
+  </Card>
+</TabsContent>
           </Tabs>
         </>
       ) : (
